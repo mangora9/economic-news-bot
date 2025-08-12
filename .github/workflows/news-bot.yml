@@ -1,5 +1,5 @@
 # .github/workflows/news-bot.yml
-name: 경제뉴스봇
+name: "망고의 뉴스 BOT"
 
 on:
   # 1시간마다 실행 (UTC 기준)
