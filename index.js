@@ -6,7 +6,7 @@ const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
 
 const rssFeeds = [
   { name: "매일경제", url: "https://www.mk.co.kr/rss/30100041/" },
-  { name: "한국경제", url: "https://rss.hankyung.com/feed/economy.xml" },
+  { name: "한국경제", url: "https://www.hankyung.com/feed/economy" },
 ];
 
 async function fetchArticles() {
