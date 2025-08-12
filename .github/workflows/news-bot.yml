@@ -1,0 +1,55 @@
+# .github/workflows/news-bot.yml
+name: 경제뉴스봇
+
+on:
+  # 1시간마다 실행 (UTC 기준)
+  schedule:
+    - cron: "0 * * * *" # 매시 정각
+
+  # 수동 실행 가능
+  workflow_dispatch:
+
+  # 테스트용: push시에도 실행 (나중에 제거 가능)
+  push:
+    branches: [main]
+
+jobs:
+  send-news:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 코드 체크아웃
+      - name: 코드 가져오기
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Node.js 설정
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      # 3. 의존성 설치
+      - name: 패키지 설치
+        run: npm install
+
+      # 4. 뉴스봇 실행
+      - name: 뉴스봇 실행
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: npm start
+
+      # 5. 변경사항 커밋 (last_check.json 업데이트)
+      - name: 확인 시간 기록 저장
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add last_check.json
+          if ! git diff --staged --quiet; then
+            git commit -m "⏰ 확인 시간 업데이트 - $(date +'%Y-%m-%d %H:%M')"
+            git push
+          else
+            echo "변경사항 없음"
+          fi

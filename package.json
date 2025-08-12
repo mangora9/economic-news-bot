@@ -1,0 +1,23 @@
+{
+  "name": "slack-news-bot",
+  "version": "1.0.0",
+  "description": "GitHub Actions로 실행되는 경제뉴스 슬랙봇",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node index.js"
+  },
+  "dependencies": {
+    "xml2js": "^0.6.2",
+    "dotenv": "^16.3.1"
+  },
+  "keywords": [
+    "slack",
+    "news",
+    "github-actions",
+    "rss"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
