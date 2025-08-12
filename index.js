@@ -34,17 +34,13 @@ function createSlackMessage(articles) {
     blocks: [
       {
         type: "header",
-        text: {
-          type: "plain_text",
-          text: "📰 최신 경제 뉴스",
-          emoji: true,
-        },
+        text: { type: "plain_text", text: "📰 최신 경제 뉴스", emoji: true },
       },
       { type: "divider" },
     ],
   };
 
-  articles.forEach((article, index) => {
+  articles.forEach((article) => {
     let description = article.description.replace(/<[^>]*>/g, "").trim();
     if (description.length > 80)
       description = description.substring(0, 80) + "...";
@@ -56,53 +52,34 @@ function createSlackMessage(articles) {
       minute: "2-digit",
     });
 
-    let color;
     let sourceTag;
     if (article.sourceName.includes("매일경제")) {
-      color = "#FF8C00"; // 주황
       sourceTag = "[매일경제]";
     } else if (article.sourceName.includes("한국경제")) {
-      color = "#1E90FF"; // 파랑
       sourceTag = "[한국경제]";
     } else {
-      color = "#808080"; // 회색
       sourceTag = `[${article.sourceName}]`;
     }
 
-    // 카드 스타일 기사 블록
     message.blocks.push(
       {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*<${article.link}|${sourceTag} ${article.title}>*\n_${pubDateText}_\n${description}`,
+          text: `*<${article.link}|${sourceTag} ${article.title}>*\n:calendar: ${pubDateText}\n${description}`,
         },
         accessory: {
           type: "button",
-          text: {
-            type: "plain_text",
-            text: "📖 읽기",
-          },
+          text: { type: "plain_text", text: "📖 읽기" },
           style: "primary",
           url: article.link,
         },
       },
       {
         type: "context",
-        elements: [
-          {
-            type: "mrkdwn",
-            text: `*출처:* ${article.sourceName}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `:large_square:`,
-          },
-        ],
+        elements: [{ type: "mrkdwn", text: `*출처:* ${article.sourceName}` }],
       },
-      {
-        type: "divider",
-      }
+      { type: "divider" }
     );
   });
 
