@@ -35,13 +35,50 @@ if (!categoryConfig) {
 
 const rssFeeds = categoryConfig.feeds;
 
+// 마지막 확인 시간 로드
+function loadLastCheck() {
+  try {
+    const lastCheck = JSON.parse(fs.readFileSync("./last_check.json", "utf8"));
+    return lastCheck[CATEGORY] ? new Date(lastCheck[CATEGORY]) : new Date(0);
+  } catch (error) {
+    console.log(
+      "last_check.json 파일이 없거나 읽을 수 없습니다. 처음 실행으로 간주합니다."
+    );
+    return new Date(0); // 처음 실행시 모든 뉴스 가져오기
+  }
+}
+
+// 마지막 확인 시간 저장
+function saveLastCheck() {
+  let lastCheck = {};
+  try {
+    lastCheck = JSON.parse(fs.readFileSync("./last_check.json", "utf8"));
+  } catch (error) {
+    // 파일이 없으면 빈 객체로 시작
+  }
+
+  lastCheck[CATEGORY] = new Date().toISOString();
+  fs.writeFileSync("./last_check.json", JSON.stringify(lastCheck, null, 2));
+  console.log(`마지막 확인 시간 저장: ${lastCheck[CATEGORY]}`);
+}
+
 async function fetchArticles() {
+  const lastCheckTime = loadLastCheck();
+  console.log(`마지막 확인 시간: ${lastCheckTime.toISOString()}`);
+
   const allArticles = [];
   for (const feed of rssFeeds) {
     try {
       console.log(`Fetching from ${feed.name}: ${feed.url}`);
       const rss = await parser.parseURL(feed.url);
-      rss.items.forEach((item) => {
+
+      // 신규 뉴스만 필터링
+      const newArticles = rss.items.filter((item) => {
+        const pubDate = new Date(item.pubDate);
+        return pubDate > lastCheckTime;
+      });
+
+      newArticles.forEach((item) => {
         allArticles.push({
           title: item.title,
           link: item.link,
@@ -50,8 +87,9 @@ async function fetchArticles() {
           sourceName: feed.name,
         });
       });
+
       console.log(
-        `Successfully fetched ${rss.items.length} articles from ${feed.name}`
+        `${feed.name}에서 총 ${rss.items.length}개 기사 중 ${newArticles.length}개 신규 기사 발견`
       );
     } catch (error) {
       console.error(`Error fetching from ${feed.name}:`, error.message);
@@ -137,6 +175,17 @@ async function sendToSlack(message) {
 
 (async () => {
   const articles = await fetchArticles();
-  const slackMessage = createSlackMessage(articles.slice(0, 5));
+
+  if (articles.length === 0) {
+    console.log("신규 뉴스가 없습니다.");
+    return;
+  }
+
+  console.log(`${articles.length}개의 신규 뉴스를 슬랙으로 전송합니다.`);
+  const slackMessage = createSlackMessage(articles.slice(0, 5)); // 최대 5개만 전송
   await sendToSlack(slackMessage);
+
+  // 전송 완료 후 마지막 확인 시간 업데이트
+  saveLastCheck();
+  console.log("뉴스 전송 완료!");
 })();
