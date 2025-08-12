@@ -13,6 +13,11 @@ on:
   push:
     branches: [main]
 
+# 🆕 권한 설정 추가
+permissions:
+  contents: write # repository 내용 쓰기 권한
+  actions: read # actions 읽기 권한
+
 jobs:
   send-news:
     runs-on: ubuntu-latest
@@ -22,6 +27,7 @@ jobs:
       - name: 코드 가져오기
         uses: actions/checkout@v4
         with:
+          # 🆕 개인 토큰 대신 GITHUB_TOKEN 사용
           token: ${{ secrets.GITHUB_TOKEN }}
 
       # 2. Node.js 설정
