@@ -1,0 +1,23 @@
+{
+  "categories": {
+    "economy": {
+      "name": "경제",
+      "emoji": "📈",
+      "feeds": [
+        { "name": "매일경제", "url": "https://www.mk.co.kr/rss/30100041/" },
+        { "name": "한국경제", "url": "https://www.hankyung.com/feed/economy" }
+      ]
+    },
+    "realestate": {
+      "name": "부동산",
+      "emoji": "🏠",
+      "feeds": [
+        { "name": "매일경제", "url": "https://www.mk.co.kr/rss/50300009/" },
+        {
+          "name": "한국경제",
+          "url": "https://www.hankyung.com/feed/realestate"
+        }
+      ]
+    }
+  }
+}

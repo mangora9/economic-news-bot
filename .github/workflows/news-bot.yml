@@ -21,6 +21,9 @@ permissions:
 jobs:
   send-news:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        category: [economy, realestate]
 
     steps:
       # 1. 코드 체크아웃
@@ -42,19 +45,21 @@ jobs:
         run: npm install
 
       # 4. 뉴스봇 실행
-      - name: 뉴스봇 실행
+      - name: 뉴스봇 실행 (${{ matrix.category }})
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL_ECONOMY: ${{ secrets.SLACK_WEBHOOK_URL_ECONOMY }}
+          SLACK_WEBHOOK_URL_REALESTATE: ${{ secrets.SLACK_WEBHOOK_URL_REALESTATE }}
+          NEWS_CATEGORY: ${{ matrix.category }}
         run: npm start
 
       # 5. 변경사항 커밋 (last_check.json 업데이트)
-      - name: 확인 시간 기록 저장
+      - name: 확인 시간 기록 저장 (${{ matrix.category }})
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add last_check.json
           if ! git diff --staged --quiet; then
-            git commit -m "⏰ 확인 시간 업데이트 - $(date +'%Y-%m-%d %H:%M')"
+            git commit -m "⏰ ${{ matrix.category }} 뉴스 확인 - $(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M')"
             git push
           else
             echo "변경사항 없음"

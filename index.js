@@ -1,13 +1,39 @@
 import Parser from "rss-parser";
 import fetch from "node-fetch";
+import fs from "fs";
+import dotenv from "dotenv";
+
+// .env 파일 로드 (로컬 개발용)
+dotenv.config();
 
 const parser = new Parser();
-const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
 
-const rssFeeds = [
-  { name: "매일경제", url: "https://www.mk.co.kr/rss/30100041/" },
-  { name: "한국경제", url: "https://www.hankyung.com/feed/economy" },
-];
+// 환경변수로 카테고리 지정 (기본값: economy)
+const CATEGORY = process.env.NEWS_CATEGORY || "economy";
+
+// 카테고리별 웹훅 URL 설정
+const WEBHOOK_URLS = {
+  economy: process.env.SLACK_WEBHOOK_URL_ECONOMY,
+  realestate: process.env.SLACK_WEBHOOK_URL_REALESTATE,
+};
+
+const SLACK_WEBHOOK_URL = WEBHOOK_URLS[CATEGORY];
+
+if (!SLACK_WEBHOOK_URL) {
+  console.error(`No webhook URL found for category: ${CATEGORY}`);
+  process.exit(1);
+}
+
+// 설정 파일 로드
+const config = JSON.parse(fs.readFileSync("./news-config.json", "utf8"));
+const categoryConfig = config.categories[CATEGORY];
+
+if (!categoryConfig) {
+  console.error(`Unknown category: ${CATEGORY}`);
+  process.exit(1);
+}
+
+const rssFeeds = categoryConfig.feeds;
 
 async function fetchArticles() {
   const allArticles = [];
@@ -38,12 +64,16 @@ async function fetchArticles() {
 
 function createSlackMessage(articles) {
   const message = {
-    username: "경제뉴스봇",
+    username: `${categoryConfig.name}뉴스봇`,
     icon_emoji: ":newspaper:",
     blocks: [
       {
         type: "header",
-        text: { type: "plain_text", text: "📰 최신 경제 뉴스", emoji: true },
+        text: {
+          type: "plain_text",
+          text: `${categoryConfig.emoji} 최신 ${categoryConfig.name} 뉴스`,
+          emoji: true,
+        },
       },
       { type: "divider" },
     ],
