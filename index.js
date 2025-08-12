@@ -12,16 +12,25 @@ const rssFeeds = [
 async function fetchArticles() {
   const allArticles = [];
   for (const feed of rssFeeds) {
-    const rss = await parser.parseURL(feed.url);
-    rss.items.forEach((item) => {
-      allArticles.push({
-        title: item.title,
-        link: item.link,
-        description: item.contentSnippet || item.content || "",
-        pubDate: new Date(item.pubDate),
-        sourceName: feed.name,
+    try {
+      console.log(`Fetching from ${feed.name}: ${feed.url}`);
+      const rss = await parser.parseURL(feed.url);
+      rss.items.forEach((item) => {
+        allArticles.push({
+          title: item.title,
+          link: item.link,
+          description: item.contentSnippet || item.content || "",
+          pubDate: new Date(item.pubDate),
+          sourceName: feed.name,
+        });
       });
-    });
+      console.log(
+        `Successfully fetched ${rss.items.length} articles from ${feed.name}`
+      );
+    } catch (error) {
+      console.error(`Error fetching from ${feed.name}:`, error.message);
+      // 하나의 피드가 실패해도 다른 피드는 계속 처리
+    }
   }
   allArticles.sort((a, b) => b.pubDate - a.pubDate);
   return allArticles;
@@ -45,7 +54,9 @@ function createSlackMessage(articles) {
     if (description.length > 80)
       description = description.substring(0, 80) + "...";
 
+    // 한국 시간으로 변환하여 표시
     const pubDateText = article.pubDate.toLocaleString("ko-KR", {
+      timeZone: "Asia/Seoul",
       month: "short",
       day: "numeric",
       hour: "2-digit",
