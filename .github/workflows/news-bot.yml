@@ -2,9 +2,9 @@
 name: "망고의 뉴스 BOT"
 
 on:
-  # 1시간마다 실행 (UTC 기준)
+  # 1시간마다 실행 (한국시간 매시 정각 = UTC -9시간)
   schedule:
-    - cron: "0 * * * *" # 매시 정각
+    - cron: "0 15-23,0-14 * * *" # 한국시간 매시 정각 (UTC 15시~14시)
 
   # 수동 실행 가능
   workflow_dispatch:
@@ -47,8 +47,7 @@ jobs:
       # 4. 뉴스봇 실행
       - name: 뉴스봇 실행 (${{ matrix.category }})
         env:
-          SLACK_WEBHOOK_URL_ECONOMY: ${{ secrets.SLACK_WEBHOOK_URL_ECONOMY }}
-          SLACK_WEBHOOK_URL_REALESTATE: ${{ secrets.SLACK_WEBHOOK_URL_REALESTATE }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           NEWS_CATEGORY: ${{ matrix.category }}
         run: npm start
 

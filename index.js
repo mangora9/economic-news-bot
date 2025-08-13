@@ -11,19 +11,6 @@ const parser = new Parser();
 // 환경변수로 카테고리 지정 (기본값: economy)
 const CATEGORY = process.env.NEWS_CATEGORY || "economy";
 
-// 카테고리별 웹훅 URL 설정
-const WEBHOOK_URLS = {
-  economy: process.env.SLACK_WEBHOOK_URL_ECONOMY,
-  realestate: process.env.SLACK_WEBHOOK_URL_REALESTATE,
-};
-
-const SLACK_WEBHOOK_URL = WEBHOOK_URLS[CATEGORY];
-
-if (!SLACK_WEBHOOK_URL) {
-  console.error(`No webhook URL found for category: ${CATEGORY}`);
-  process.exit(1);
-}
-
 // 설정 파일 로드
 const config = JSON.parse(fs.readFileSync("./news-config.json", "utf8"));
 const categoryConfig = config.categories[CATEGORY];
@@ -32,6 +19,15 @@ if (!categoryConfig) {
   console.error(`Unknown category: ${CATEGORY}`);
   process.exit(1);
 }
+
+// Slack Bot Token 확인
+const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
+if (!SLACK_BOT_TOKEN) {
+  console.error("SLACK_BOT_TOKEN 환경변수가 설정되지 않았습니다.");
+  process.exit(1);
+}
+
+const CHANNEL_ID = categoryConfig.channel_id;
 
 const rssFeeds = categoryConfig.feeds;
 
@@ -101,34 +97,20 @@ async function fetchArticles() {
 }
 
 function createSlackMessage(articles) {
-  const message = {
-    username: `${categoryConfig.name}뉴스봇`,
-    icon_emoji: ":newspaper:",
-    blocks: [
-      {
-        type: "header",
-        text: {
-          type: "plain_text",
-          text: `${categoryConfig.emoji} 최신 ${categoryConfig.name} 뉴스`,
-          emoji: true,
-        },
-      },
-      { type: "divider" },
-    ],
-  };
+  let messageText = `${categoryConfig.emoji} *최신 ${categoryConfig.name} 뉴스*\n\n`;
 
-  articles.forEach((article) => {
+  articles.forEach((article, index) => {
     let description = article.description.replace(/<[^>]*>/g, "").trim();
-    if (description.length > 80)
-      description = description.substring(0, 80) + "...";
+    if (description.length > 150)
+      description = description.substring(0, 150) + "...";
 
-    // 한국 시간으로 변환하여 표시
     const pubDateText = article.pubDate.toLocaleString("ko-KR", {
       timeZone: "Asia/Seoul",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false, // 24시간 표기법
     });
 
     let sourceTag;
@@ -140,37 +122,51 @@ function createSlackMessage(articles) {
       sourceTag = `[${article.sourceName}]`;
     }
 
-    message.blocks.push(
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `*<${article.link}|${sourceTag} ${article.title}>*\n:calendar: ${pubDateText}\n${description}`,
-        },
-        accessory: {
-          type: "button",
-          text: { type: "plain_text", text: "📖 읽기" },
-          style: "primary",
-          url: article.link,
-        },
-      },
-      {
-        type: "context",
-        elements: [{ type: "mrkdwn", text: `*출처:* ${article.sourceName}` }],
-      },
-      { type: "divider" }
-    );
+    messageText += `📰 *${sourceTag} ${article.title}*\n`;
+    messageText += `📅 ${pubDateText}\n`;
+    messageText += `${description}\n`;
+    messageText += `🔗 ${article.link}\n`;
+
+    if (index < articles.length - 1) {
+      messageText += `\n${"─".repeat(40)}\n\n`;
+    }
   });
 
-  return message;
+  return {
+    username: `${categoryConfig.name}뉴스봇`,
+    icon_emoji: ":newspaper:",
+    text: messageText,
+    unfurl_links: false,
+    unfurl_media: false,
+  };
 }
 
 async function sendToSlack(message) {
-  await fetch(SLACK_WEBHOOK_URL, {
+  const payload = {
+    channel: CHANNEL_ID,
+    username: message.username,
+    icon_emoji: message.icon_emoji,
+    text: message.text,
+    unfurl_links: message.unfurl_links,
+    unfurl_media: message.unfurl_media,
+  };
+
+  const response = await fetch("https://slack.com/api/chat.postMessage", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(message),
+    headers: {
+      Authorization: `Bearer ${SLACK_BOT_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
   });
+
+  const result = await response.json();
+  if (!result.ok) {
+    console.error("Slack API 오류:", result.error);
+    throw new Error(`Slack API 오류: ${result.error}`);
+  }
+
+  console.log("슬랙 메시지 전송 성공!");
 }
 
 (async () => {
