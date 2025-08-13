@@ -54,7 +54,14 @@ jobs:
           NEWS_CATEGORY: realestate
         run: npm start
 
-      # 6. 변경사항 커밋 (last_check.json 업데이트) - 순차 실행으로 충돌 없음
+      # 6. 긱뉴스 실행
+      - name: 긱뉴스 전송
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          NEWS_CATEGORY: geeknews
+        run: npm start
+
+      # 7. 변경사항 커밋 (last_check.json 업데이트) - 순차 실행으로 충돌 없음
       - name: 뉴스 확인 시간 기록 저장
         run: |
           git config --local user.email "action@github.com"
