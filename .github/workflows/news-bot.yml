@@ -21,16 +21,12 @@ permissions:
 jobs:
   send-news:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        category: [economy, realestate]
 
     steps:
       # 1. 코드 체크아웃
       - name: 코드 가져오기
         uses: actions/checkout@v4
         with:
-          # 🆕 개인 토큰 대신 GITHUB_TOKEN 사용
           token: ${{ secrets.GITHUB_TOKEN }}
 
       # 2. Node.js 설정
@@ -44,21 +40,28 @@ jobs:
       - name: 패키지 설치
         run: npm install
 
-      # 4. 뉴스봇 실행
-      - name: 뉴스봇 실행 (${{ matrix.category }})
+      # 4. 경제뉴스 실행
+      - name: 경제뉴스 전송
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          NEWS_CATEGORY: ${{ matrix.category }}
+          NEWS_CATEGORY: economy
         run: npm start
 
-      # 5. 변경사항 커밋 (last_check.json 업데이트)
-      - name: 확인 시간 기록 저장 (${{ matrix.category }})
+      # 5. 부동산뉴스 실행
+      - name: 부동산뉴스 전송
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          NEWS_CATEGORY: realestate
+        run: npm start
+
+      # 6. 변경사항 커밋 (last_check.json 업데이트) - 순차 실행으로 충돌 없음
+      - name: 뉴스 확인 시간 기록 저장
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add last_check.json
           if ! git diff --staged --quiet; then
-            git commit -m "⏰ ${{ matrix.category }} 뉴스 확인 - $(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M')"
+            git commit -m "⏰ 뉴스 확인 완료 - $(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M')"
             git push
           else
             echo "변경사항 없음"
