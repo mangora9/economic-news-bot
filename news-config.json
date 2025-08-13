@@ -24,7 +24,7 @@
     "geeknews": {
       "name": "GEEKNEWS",
       "emoji": "💻",
-      "channel_id": "GeekNews_채널_ID를_여기에_입력C09A3J3BHV3",
+      "channel_id": "C09A3J3BHV3",
       "feeds": [{ "name": "GeekNews", "url": "https://news.hada.io/rss/news" }]
     }
   }
