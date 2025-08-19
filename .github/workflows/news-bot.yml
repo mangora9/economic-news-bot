@@ -13,9 +13,8 @@ on:
   push:
     branches: [main]
 
-# 🆕 권한 설정 추가
+# 권한 설정
 permissions:
-  contents: write # repository 내용 쓰기 권한
   actions: read # actions 읽기 권한
 
 jobs:
@@ -40,6 +39,16 @@ jobs:
       - name: 패키지 설치
         run: npm install
 
+      # 3.5. 캐시에서 마지막 확인 시간 복원
+      - name: 마지막 확인 시간 캐시 복원
+        uses: actions/cache@v3
+        with:
+          path: last_check.json
+          key: news-bot-last-check-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            news-bot-last-check-${{ runner.os }}-
+            news-bot-last-check-
+
       # 4. 경제뉴스 실행
       - name: 경제뉴스 전송
         env:
@@ -61,15 +70,10 @@ jobs:
           NEWS_CATEGORY: geeknews
         run: npm start
 
-      # 7. 변경사항 커밋 (last_check.json 업데이트) - 순차 실행으로 충돌 없음
-      - name: 뉴스 확인 시간 기록 저장
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add last_check.json
-          if ! git diff --staged --quiet; then
-            git commit -m "⏰ 뉴스 확인 완료 - $(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M')"
-            git push
-          else
-            echo "변경사항 없음"
-          fi
+      # 7. 마지막 확인 시간 캐시 저장
+      - name: 마지막 확인 시간 캐시 저장
+        uses: actions/cache/save@v3
+        if: always()
+        with:
+          path: last_check.json
+          key: news-bot-last-check-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ github.run_id }}

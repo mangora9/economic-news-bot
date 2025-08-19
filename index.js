@@ -178,7 +178,7 @@ async function sendToSlack(message) {
   }
 
   console.log(`${articles.length}개의 신규 뉴스를 슬랙으로 전송합니다.`);
-  const slackMessage = createSlackMessage(articles.slice(0, 5)); // 최대 5개만 전송
+  const slackMessage = createSlackMessage(articles); // 모든 신규 뉴스 전송
   await sendToSlack(slackMessage);
 
   // 전송 완료 후 마지막 확인 시간 업데이트
