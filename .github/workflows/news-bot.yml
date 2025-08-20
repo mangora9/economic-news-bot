@@ -41,13 +41,11 @@ jobs:
 
       # 3.5. 캐시에서 마지막 확인 시간 복원
       - name: 마지막 확인 시간 캐시 복원
-        uses: actions/cache@v3
+        uses: actions/cache/restore@v3
         with:
           path: last_check.json
-          key: news-bot-last-check-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            news-bot-last-check-${{ runner.os }}-
-            news-bot-last-check-
+          key: news-bot-last-check
+          restore-keys: news-bot-last-check
 
       # 4. 경제뉴스 실행
       - name: 경제뉴스 전송
@@ -76,4 +74,4 @@ jobs:
         if: always()
         with:
           path: last_check.json
-          key: news-bot-last-check-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ github.run_id }}
+          key: news-bot-last-check

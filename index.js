@@ -92,8 +92,24 @@ async function fetchArticles() {
       // 하나의 피드가 실패해도 다른 피드는 계속 처리
     }
   }
-  allArticles.sort((a, b) => b.pubDate - a.pubDate);
-  return allArticles;
+
+  // 중복 기사 제거 (제목 기준)
+  const uniqueArticles = [];
+  const seenTitles = new Set();
+
+  for (const article of allArticles) {
+    const normalizedTitle = article.title.replace(/\s+/g, " ").trim();
+    if (!seenTitles.has(normalizedTitle)) {
+      seenTitles.add(normalizedTitle);
+      uniqueArticles.push(article);
+    }
+  }
+
+  uniqueArticles.sort((a, b) => b.pubDate - a.pubDate);
+  console.log(
+    `중복 제거 후: ${uniqueArticles.length}개 기사 (원본: ${allArticles.length}개)`
+  );
+  return uniqueArticles;
 }
 
 function createSlackMessage(articles) {
