@@ -17,6 +17,7 @@ GitHub Actions로 자동 실행되는 슬랙 뉴스봇입니다.
 GitHub Repository Settings > Secrets에 추가:
 
 - `SLACK_BOT_TOKEN`: 슬랙 봇 토큰
+- `NEWS_CATEGORY`: 뉴스 카테고리 (economy/realestate/geeknews)
 
 ### 2. 뉴스 카테고리 설정
 
@@ -38,44 +39,47 @@ GitHub Repository Settings > Secrets에 추가:
 }
 ```
 
-### 3. 실행
+### 3. 로컬 실행
 
 ```bash
 npm install
-npm start
+NEWS_CATEGORY=economy SLACK_BOT_TOKEN=your_token node index.js
 ```
 
 ## 📂 구조
 
 ```
 news-bot/
-├── .github/workflows/
-│   └── news-bot.yml   # GitHub Actions 워크플로우 (30분마다)
-├── index.js           # 메인 코드 (Stateless)
-├── news-config.json   # 카테고리 설정
-└── package.json       # 의존성
+├── index.js           # 메인 코드 (강화된 중복 방지)
+├── news-config.json   # 카테고리별 RSS 피드 설정
+├── package.json       # 최적화된 의존성 (rss-parser, node-fetch)
+└── README.md         # 사용법
 ```
 
 ## 🔧 커스터마이징
 
-- **실행 주기**: `.github/workflows/news-bot.yml`에서 cron 수정
-- **시간 범위**: `index.js`에서 `1 * 60 * 60 * 1000` (1시간) 조정
+- **시간 범위**: `index.js`의 `getTimeWindow()` 함수에서 30-40분 범위 조정
+- **유사성 임계값**: `isSimilarTitle()` 함수에서 `threshold = 0.8` 조정
 - **카테고리 추가**: `news-config.json`에 새 카테고리 추가
 - **RSS 피드 추가**: 각 카테고리의 `feeds` 배열에 추가
 
-## ✨ Stateless 구조
+## ✨ 중복 방지 시스템
 
-### 완전한 Stateless 설계
+### 시간 윈도우 기반 필터링
 
-- **상태 파일 없음**: 파일 저장/관리 불필요
-- **Git 히스토리 깔끔함**: 커밋/푸시 없이 깔끔한 저장소 유지
-- **무한 확장성**: 새 카테고리 추가해도 추가 설정 불필요
+- **30-40분 전 기사**: 정확한 시간 범위로 중복 없이 처리
+- **GitHub Actions 최적화**: 캐시 파일 없이 완전 Stateless
 
-### 시간 기반 필터링
+### 강화된 중복 체크
 
-- **최근 1시간 기사**: 30분마다 실행하여 놓치는 뉴스 없음
-- **중복 제거**: 제목 기반 중복 필터링
-- **24시간 표기법**: 명확한 시간 표시
+- **제목 + 링크 조합**: 완전히 동일한 기사 차단
+- **유사성 검사**: 80% 이상 유사한 제목 필터링 (토큰 기반)
+- **정규화**: 공백, 대소문자 정규화로 정확성 향상
+
+### 최적화된 의존성
+
+- **rss-parser**: RSS 피드 파싱
+- **node-fetch**: HTTP 요청
 
 ---
 
