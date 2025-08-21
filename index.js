@@ -31,36 +31,15 @@ const CHANNEL_ID = categoryConfig.channel_id;
 
 const rssFeeds = categoryConfig.feeds;
 
-// 마지막 확인 시간 로드
-function loadLastCheck() {
-  try {
-    const lastCheck = JSON.parse(fs.readFileSync("./last_check.json", "utf8"));
-    return lastCheck[CATEGORY] ? new Date(lastCheck[CATEGORY]) : new Date(0);
-  } catch (error) {
-    console.log(
-      "last_check.json 파일이 없거나 읽을 수 없습니다. 처음 실행으로 간주합니다."
-    );
-    return new Date(0); // 처음 실행시 모든 뉴스 가져오기
-  }
-}
-
-// 마지막 확인 시간 저장
-function saveLastCheck() {
-  let lastCheck = {};
-  try {
-    lastCheck = JSON.parse(fs.readFileSync("./last_check.json", "utf8"));
-  } catch (error) {
-    // 파일이 없으면 빈 객체로 시작
-  }
-
-  lastCheck[CATEGORY] = new Date().toISOString();
-  fs.writeFileSync("./last_check.json", JSON.stringify(lastCheck, null, 2));
-  console.log(`마지막 확인 시간 저장: ${lastCheck[CATEGORY]}`);
+// Stateless 방식: 최근 1시간 기사만 가져오기 (news-bot.yml 에서 30분마다 실행)
+function getRecentTimeThreshold() {
+  const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1_000);
+  console.log(`최근 1시간 기준 시간: ${oneHourAgo.toISOString()}`);
+  return oneHourAgo;
 }
 
 async function fetchArticles() {
-  const lastCheckTime = loadLastCheck();
-  console.log(`마지막 확인 시간: ${lastCheckTime.toISOString()}`);
+  const recentTimeThreshold = getRecentTimeThreshold();
 
   const allArticles = [];
   for (const feed of rssFeeds) {
@@ -68,13 +47,13 @@ async function fetchArticles() {
       console.log(`Fetching from ${feed.name}: ${feed.url}`);
       const rss = await parser.parseURL(feed.url);
 
-      // 신규 뉴스만 필터링
-      const newArticles = rss.items.filter((item) => {
+      // 최근 1시간 내 뉴스만 필터링
+      const recentArticles = rss.items.filter((item) => {
         const pubDate = new Date(item.pubDate);
-        return pubDate > lastCheckTime;
+        return pubDate > recentTimeThreshold;
       });
 
-      newArticles.forEach((item) => {
+      recentArticles.forEach((item) => {
         allArticles.push({
           title: item.title,
           link: item.link,
@@ -85,7 +64,7 @@ async function fetchArticles() {
       });
 
       console.log(
-        `${feed.name}에서 총 ${rss.items.length}개 기사 중 ${newArticles.length}개 신규 기사 발견`
+        `${feed.name}에서 총 ${rss.items.length}개 기사 중 ${recentArticles.length}개 최근 기사 발견`
       );
     } catch (error) {
       console.error(`Error fetching from ${feed.name}:`, error.message);
@@ -189,15 +168,13 @@ async function sendToSlack(message) {
   const articles = await fetchArticles();
 
   if (articles.length === 0) {
-    console.log("신규 뉴스가 없습니다.");
+    console.log("최근 1시간 내 뉴스가 없습니다.");
     return;
   }
 
-  console.log(`${articles.length}개의 신규 뉴스를 슬랙으로 전송합니다.`);
-  const slackMessage = createSlackMessage(articles); // 모든 신규 뉴스 전송
+  console.log(`${articles.length}개의 최근 뉴스를 슬랙으로 전송합니다.`);
+  const slackMessage = createSlackMessage(articles); // 모든 최근 뉴스 전송
   await sendToSlack(slackMessage);
 
-  // 전송 완료 후 마지막 확인 시간 업데이트
-  saveLastCheck();
   console.log("뉴스 전송 완료!");
 })();

@@ -2,9 +2,9 @@
 name: "망고의 뉴스 BOT"
 
 on:
-  # 1시간마다 실행 (한국시간 매시 정각 = UTC -9시간)
+  # 30분마다 실행 (한국시간 매시 정각, 30분 = UTC -9시간)
   schedule:
-    - cron: "0 15-23,0-14 * * *" # 한국시간 매시 정각 (UTC 15시~14시)
+    - cron: "0,30 15-23,0-14 * * *" # 한국시간 매 30분마다 (UTC 15시~14시)
 
   # 수동 실행 가능
   workflow_dispatch:
@@ -12,10 +12,6 @@ on:
   # 테스트용: push시에도 실행 (나중에 제거 가능)
   push:
     branches: [main]
-
-# 권한 설정
-permissions:
-  actions: read # actions 읽기 권한
 
 jobs:
   send-news:
@@ -39,14 +35,6 @@ jobs:
       - name: 패키지 설치
         run: npm install
 
-      # 3.5. 캐시에서 마지막 확인 시간 복원
-      - name: 마지막 확인 시간 캐시 복원
-        uses: actions/cache/restore@v3
-        with:
-          path: last_check.json
-          key: news-bot-last-check
-          restore-keys: news-bot-last-check
-
       # 4. 경제뉴스 실행
       - name: 경제뉴스 전송
         env:
@@ -67,11 +55,3 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           NEWS_CATEGORY: geeknews
         run: npm start
-
-      # 7. 마지막 확인 시간 캐시 저장
-      - name: 마지막 확인 시간 캐시 저장
-        uses: actions/cache/save@v3
-        if: always()
-        with:
-          path: last_check.json
-          key: news-bot-last-check
