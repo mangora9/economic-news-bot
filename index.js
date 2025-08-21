@@ -1,10 +1,6 @@
 import Parser from "rss-parser";
 import fetch from "node-fetch";
 import fs from "fs";
-import dotenv from "dotenv";
-
-// .env 파일 로드 (로컬 개발용)
-dotenv.config();
 
 const parser = new Parser();
 
@@ -31,15 +27,51 @@ const CHANNEL_ID = categoryConfig.channel_id;
 
 const rssFeeds = categoryConfig.feeds;
 
-// Stateless 방식: 최근 1시간 기사만 가져오기 (news-bot.yml 에서 30분마다 실행)
-function getRecentTimeThreshold() {
-  const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1_000);
-  console.log(`최근 1시간 기준 시간: ${oneHourAgo.toISOString()}`);
-  return oneHourAgo;
+// 시간 범위: 30분 전 ~ 40분 전 기사만 처리
+function getTimeWindow() {
+  const now = new Date();
+  const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+  const fortyMinutesAgo = new Date(now.getTime() - 40 * 60 * 1000);
+
+  console.log(
+    `시간 범위: ${fortyMinutesAgo.toISOString()} ~ ${thirtyMinutesAgo.toISOString()}`
+  );
+  return { start: fortyMinutesAgo, end: thirtyMinutesAgo };
+}
+
+// 기사 고유 키 생성
+function generateArticleKey(article) {
+  const normalizedTitle = article.title
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  return `${normalizedTitle}|${article.link}`;
+}
+
+// 제목 유사성 검사
+function isSimilarTitle(title1, title2, threshold = 0.8) {
+  const tokens1 = title1
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .split(/\s+/)
+    .filter((t) => t.length > 1);
+  const tokens2 = title2
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .split(/\s+/)
+    .filter((t) => t.length > 1);
+
+  if (tokens1.length === 0 || tokens2.length === 0) return false;
+
+  const commonTokens = tokens1.filter((token) => tokens2.includes(token));
+  const similarity =
+    commonTokens.length / Math.max(tokens1.length, tokens2.length);
+
+  return similarity >= threshold;
 }
 
 async function fetchArticles() {
-  const recentTimeThreshold = getRecentTimeThreshold();
+  const timeWindow = getTimeWindow();
 
   const allArticles = [];
   for (const feed of rssFeeds) {
@@ -47,13 +79,13 @@ async function fetchArticles() {
       console.log(`Fetching from ${feed.name}: ${feed.url}`);
       const rss = await parser.parseURL(feed.url);
 
-      // 최근 1시간 내 뉴스만 필터링
-      const recentArticles = rss.items.filter((item) => {
+      // 30분 전 ~ 40분 전 기사만 필터링
+      const targetArticles = rss.items.filter((item) => {
         const pubDate = new Date(item.pubDate);
-        return pubDate > recentTimeThreshold;
+        return pubDate >= timeWindow.start && pubDate <= timeWindow.end;
       });
 
-      recentArticles.forEach((item) => {
+      targetArticles.forEach((item) => {
         allArticles.push({
           title: item.title,
           link: item.link,
@@ -64,22 +96,34 @@ async function fetchArticles() {
       });
 
       console.log(
-        `${feed.name}에서 총 ${rss.items.length}개 기사 중 ${recentArticles.length}개 최근 기사 발견`
+        `${feed.name}에서 총 ${rss.items.length}개 기사 중 ${targetArticles.length}개 대상 기사 발견`
       );
     } catch (error) {
       console.error(`Error fetching from ${feed.name}:`, error.message);
-      // 하나의 피드가 실패해도 다른 피드는 계속 처리
     }
   }
 
-  // 중복 기사 제거 (제목 기준)
+  // 중복 기사 제거 (제목+링크 기준 및 유사성 검사)
   const uniqueArticles = [];
-  const seenTitles = new Set();
+  const seenKeys = new Set();
+  const seenTitles = [];
 
   for (const article of allArticles) {
-    const normalizedTitle = article.title.replace(/\s+/g, " ").trim();
-    if (!seenTitles.has(normalizedTitle)) {
-      seenTitles.add(normalizedTitle);
+    const articleKey = generateArticleKey(article);
+
+    // 1. 동일한 키(제목+링크)로 중복 확인
+    if (seenKeys.has(articleKey)) {
+      continue;
+    }
+
+    // 2. 유사한 제목의 기사 확인
+    const isDuplicate = seenTitles.some((seenTitle) =>
+      isSimilarTitle(article.title, seenTitle)
+    );
+
+    if (!isDuplicate) {
+      seenKeys.add(articleKey);
+      seenTitles.push(article.title);
       uniqueArticles.push(article);
     }
   }
@@ -168,12 +212,12 @@ async function sendToSlack(message) {
   const articles = await fetchArticles();
 
   if (articles.length === 0) {
-    console.log("최근 1시간 내 뉴스가 없습니다.");
+    console.log("전송할 새로운 뉴스가 없습니다.");
     return;
   }
 
-  console.log(`${articles.length}개의 최근 뉴스를 슬랙으로 전송합니다.`);
-  const slackMessage = createSlackMessage(articles); // 모든 최근 뉴스 전송
+  console.log(`${articles.length}개의 새로운 뉴스를 슬랙으로 전송합니다.`);
+  const slackMessage = createSlackMessage(articles);
   await sendToSlack(slackMessage);
 
   console.log("뉴스 전송 완료!");
