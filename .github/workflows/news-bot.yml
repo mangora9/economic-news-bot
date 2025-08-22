@@ -35,23 +35,11 @@ jobs:
       - name: 패키지 설치
         run: npm install
 
-      # 4. 경제뉴스 실행
-      - name: 경제뉴스 전송
+      # 4. 모든 카테고리 뉴스 실행
+      - name: 모든 뉴스 전송
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          NEWS_CATEGORY: economy
-        run: npm start
-
-      # 5. 부동산뉴스 실행
-      - name: 부동산뉴스 전송
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          NEWS_CATEGORY: realestate
-        run: npm start
-
-      # 6. 긱뉴스 실행
-      - name: 긱뉴스 전송
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          NEWS_CATEGORY: geeknews
+          ECONOMY_CHANNEL_ID: ${{ secrets.ECONOMY_CHANNEL_ID }}
+          REALESTATE_CHANNEL_ID: ${{ secrets.REALESTATE_CHANNEL_ID }}
+          GEEKNEWS_CHANNEL_ID: ${{ secrets.GEEKNEWS_CHANNEL_ID }}
         run: npm start
