@@ -264,7 +264,6 @@ function createSlackMessage(articles, categoryKey) {
     }
 
     const pubDateText = article.pubDate.toLocaleString("ko-KR", {
-      timeZone: "Asia/Seoul",
       month: "short",
       day: "numeric",
       hour: "2-digit",
