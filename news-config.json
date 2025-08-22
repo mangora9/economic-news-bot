@@ -22,7 +22,7 @@
     "geeknews": {
       "name": "GEEKNEWS",
       "emoji": "💻",
-      "feeds": [{ "name": "GeekNews", "url": "http://feeds.feedburner.com/geeknews-feed" }]
+      "feeds": [{ "name": "GeekNews", "url": "https://news.hada.io/rss/news" }]
     }
   }
 }
