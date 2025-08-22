@@ -80,22 +80,39 @@ async function fetchRSSWithRetry(feed, maxRetries = 3) {
         `📡 [${feed.name}] 피드 가져오기 시도 ${attempt}/${maxRetries}`
       );
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10 * ONE_SECOND); // 10초 타임아웃
+      const rssPromise = parser.parseURL(feed.url);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("타임아웃 (10초)")), 10 * ONE_SECOND)
+      );
 
-      const rss = await parser.parseURL(feed.url, {
-        signal: controller.signal,
-        timeout: 10 * ONE_SECOND,
-      });
+      const rss = await Promise.race([rssPromise, timeoutPromise]);
 
-      clearTimeout(timeoutId);
+      // RSS 파싱 결과 검증
+      if (!rss) {
+        throw new Error(`RSS 파싱 실패: 결과가 null/undefined`);
+      }
+      if (!rss.items) {
+        throw new Error(
+          `RSS 파싱 실패: items 속성이 없음 (keys: ${Object.keys(rss).join(
+            ", "
+          )})`
+        );
+      }
+      if (!Array.isArray(rss.items)) {
+        throw new Error(
+          `RSS 파싱 실패: items가 배열이 아님 (type: ${typeof rss.items})`
+        );
+      }
+
+      console.log(
+        `✅ [${feed.name}] RSS 파싱 성공: ${rss.items.length}개 항목`
+      );
       return { success: true, data: rss, source: feed.name };
     } catch (error) {
       console.error(`❌ [${feed.name}] 시도 ${attempt} 실패:`, error.message);
       if (attempt === maxRetries) {
         return { success: false, error: error.message, source: feed.name };
       }
-      // 지수 백오프: 1초, 2초, 4초 대기
       await new Promise((resolve) =>
         setTimeout(resolve, Math.pow(2, attempt - 1) * ONE_SECOND)
       );
@@ -127,6 +144,12 @@ async function fetchArticlesForCategory(categoryKey) {
     if (result.success) {
       successCount++;
       const rss = result.data;
+
+      // 추가 안전 검사
+      if (!rss || !rss.items || !Array.isArray(rss.items)) {
+        console.error(`❌ [${result.source}] RSS 데이터가 유효하지 않음`);
+        continue;
+      }
 
       // 시간대 처리: 모든 날짜를 한국시간으로 변환
       const targetArticles = rss.items.filter((item) => {
